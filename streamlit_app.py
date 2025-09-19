@@ -1,151 +1,98 @@
+streamlit
+numpy
+plotly
+pandas
+scipy
+matplotlib
+xarray
+netCDF4
+cartopy
+shapely
+pyproj
+pydap
+seaborn
+pydeck
+requests>=2.32
+pyecharts>=2.0.5
+streamlit-echarts>=0.4.0
+Pillow
+kaggle
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+import numpy as np
+import plotly.express as px
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
+# -----------------------------
+# 앱 기본 설정
+# -----------------------------
+st.set_page_config(page_title="해수면 상승 통합 대시보드", layout="wide")
+st.title("🌊 해수면 상승 통합 대시보드")
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+st.markdown("""
+이 대시보드는 전세계 및 한국 해수면 상승 현황을 시각화하고, 
+해수면 상승으로 인한 피해 사례를 정리하여 보여줍니다.
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+데이터 출처:
+- NASA/JPL Global Mean Sea Level (GMSL)
+- NOAA Tide Gauge Data
+- 국립해양조사원 한국 연안 해수면 데이터
+""")
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+# -----------------------------
+# 데이터 로딩 (예시용: 랜덤 데이터)
+# 실제 구현시 NASA/NOAA/국립해양조사원 데이터 API 또는 CSV 연결
+# -----------------------------
+dates = pd.date_range(start="1993", end="2025", freq="Y")
+gmsl = np.cumsum(np.random.normal(0.3, 0.1, len(dates)))  # 전세계 평균 해수면 상승 (mm)
+korea_sea = np.cumsum(np.random.normal(0.25, 0.1, len(dates)))  # 한국 연안 해수면 상승 (mm)
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+# 데이터프레임 생성
+df_global = pd.DataFrame({"연도": dates.year, "전세계 해수면(mm)": gmsl})
+df_korea = pd.DataFrame({"연도": dates.year, "한국 해수면(mm)": korea_sea})
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+# -----------------------------
+# 레이아웃 구성
+# -----------------------------
+tab1, tab2, tab3 = st.tabs(["🌍 전세계 현황", "🇰🇷 한국 현황", "📑 피해 사례 보고서"])
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+# -----------------------------
+# 탭 1: 전세계 해수면 상승
+# -----------------------------
+with tab1:
+    st.subheader("전세계 평균 해수면 상승 추세")
+    fig_global = px.line(df_global, x="연도", y="전세계 해수면(mm)", title="전세계 해수면 상승 (NASA/JPL)")
+    st.plotly_chart(fig_global, use_container_width=True)
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+    st.info("1993년 이후 전세계 평균 해수면은 꾸준히 상승하고 있습니다. (예시 데이터)")
 
-    return gdp_df
+# -----------------------------
+# 탭 2: 한국 해수면 상승
+# -----------------------------
+with tab2:
+    st.subheader("한국 연안 해수면 상승 추세")
+    fig_korea = px.line(df_korea, x="연도", y="한국 해수면(mm)", title="한국 해수면 상승 (국립해양조사원)")
+    st.plotly_chart(fig_korea, use_container_width=True)
 
-gdp_df = get_gdp_data()
+    st.warning("한국 연안 역시 전세계 평균과 유사한 상승 추세를 보이고 있습니다. (예시 데이터)")
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
+# -----------------------------
+# 탭 3: 피해 사례 보고서
+# -----------------------------
+with tab3:
+    st.subheader("해수면 상승으로 인한 피해 사례")
 
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
+    st.markdown("""
+    ### 📌 대표적 피해 사례
+    - **방글라데시**: 해수면 상승으로 인한 대규모 홍수 및 농경지 손실
+    - **몰디브**: 국토의 상당 부분이 침수 위험에 노출
+    - **한국 인천/부산 연안**: 항만, 해안가 저지대 침수 가능성 증가
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
+    ### 🌍 영향 요약
+    - 연안 도시 인프라 침수 위험
+    - 농업 및 식수 자원 위협
+    - 해안 생태계 변화 및 생물 다양성 감소
 
-# Add some spacing
-''
-''
+    ### 🔮 시사점
+    기후변화 대응 및 연안 방재 인프라 강화가 필요합니다.
+    """)
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
